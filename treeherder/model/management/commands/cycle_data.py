@@ -1,4 +1,5 @@
 import datetime
+import time
 
 from django.conf import settings
 from django.core.management.base import BaseCommand
@@ -84,6 +85,7 @@ class Command(BaseCommand):
         if options['target'] in ["all", "logdata"]:
             self.cycle_expired_log_records(
                 options['chunk_size'],
+                options['sleep_time'],
                 cycle_interval)
 
         if options['target'] in ["all", "refdata"]:
@@ -92,14 +94,16 @@ class Command(BaseCommand):
                 options['sleep_time'],
                 cycle_interval)
 
-    def cycle_expired_log_records(self, chunk_size, cycle_interval):
+    def cycle_expired_log_records(self, chunk_size, sleep_time, cycle_interval):
         self.debug("delete expired FailureLines")
-        old_fline_ids = list(FailureLine.objects.filter(
-            created__lt=datetime.date.today() - cycle_interval
-            ).order_by('id')[:chunk_size].values_list('id', flat=True))
-        self.debug("{} FailureLine records to be deleted".format(
-            len(old_fline_ids)))
-        FailureLine.objects.filter(id__in=old_fline_ids).delete()
+        for x in range(0, 10):
+            old_fline_ids = list(FailureLine.objects.filter(
+                created__lt=datetime.date.today() - cycle_interval
+                ).order_by('id')[:chunk_size].values_list('id', flat=True))
+            self.debug("Run {}: {} FailureLine records to be deleted".format(
+                x, len(old_fline_ids)))
+            FailureLine.objects.filter(id__in=old_fline_ids).delete()
+            time.sleep(sleep_time)
 
     def cycle_non_job_data(self, chunk_size, sleep_time, cycle_interval):
         self.debug("delete unused JobType records")
